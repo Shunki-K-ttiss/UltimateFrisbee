@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Ultimate Tactical Board Pro V19</title>
+    <title>Ultimate Tactical Board Pro V21</title>
 
-    <!-- PWA Settings -->
     <meta name="apple-mobile-web-app-title" content="TacticalBoard">
     <meta name="application-name" content="TacticalBoard">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -141,7 +140,7 @@
             background-color: #9bee60;
             z-index: 1; pointer-events: none; padding: 5%;
         }
-        .court-border { width: 100%; height: 100%; border: 3px solid #ffffff; position: relative; }
+        .court-border { width: 100%; height: 100%; border: 3px solid #ffffff; position: relative; box-sizing: border-box; }
 
         .brick-mark {
             position: absolute; width: 14px; height: 16px; transform: translate(-50%, -50%); pointer-events: none;
@@ -159,7 +158,7 @@
         }
         #drawingCanvas.active { pointer-events: auto; cursor: crosshair; }
 
-        /* Movable Elements (Player Pieces & Tactical Labels) */
+        /* Movable Elements Layout */
         .movable-element {
             position: absolute; display: flex; align-items: center; justify-content: center;
             font-weight: bold; touch-action: none; box-shadow: 0 4px 8px rgba(0,0,0,0.2);
@@ -169,22 +168,20 @@
             transition: width 0.1s, height 0.1s !important;
         }
 
-        /* Pieces Specific Styles */
         .piece { z-index: 5; box-shadow: 0 4px 8px rgba(0,0,0,0.4); }
         .piece.selected { outline: 3px solid #ffeb3b !important; outline-offset: 2px; box-shadow: 0 0 12px #ffeb3b; }
         .friend { width: 34px; height: 36px; background: #0055ff !important; border: 2px solid #ffffff; color: white; border-radius: 6px; font-size: 13px; }
         .enemy { width: 34px; height: 36px; background: #ff3333 !important; border: 2px solid #ffffff; color: white; border-radius: 6px; font-size: 13px; }
         .disk { width: 26px; height: 26px; background: #ffffff !important; border: 2px solid #000000; border-radius: 50%; color: #000000; font-size: 13px; z-index: 6; }
 
-        /* Draggable Tactical Text Styles */
+        /* Movable Tactical Text Label */
         .tactical-text {
             z-index: 7; background: transparent; padding: 4px 8px; border-radius: 4px;
             font-size: 13px; white-space: nowrap; cursor: grab; box-shadow: none;
-            text-shadow: -1.5px -1.5px 0 #fff, 1.5px -1.5px 0 #fff, -1.5px 1.5px 0 #fff, 1.5px 1.5px 0 #fff; /* 白いフチ */
+            text-shadow: -1.5px -1.5px 0 #fff, 1.5px -1.5px 0 #fff, -1.5px 1.5px 0 #fff, 1.5px 1.5px 0 #fff;
         }
         .tactical-text span { mix-blend-mode: multiply; }
 
-        /* Range Circles */
         .defense-circle {
             position: absolute; border-radius: 50%; pointer-events: none; z-index: 4; display: none;
             top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -194,7 +191,6 @@
         
         .hide-number { color: transparent !important; }
 
-        /* Shared Preview Modal */
         #previewModal {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.9); z-index: 100; justify-content: center; align-items: center;
@@ -209,7 +205,6 @@
 </head>
 <body>
 
-    <!-- Sidebar Left Nav -->
     <nav id="menu-sidebar">
         <div class="nav-item" onclick="toggleSubPanel('panel-court', this)">
             <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/></svg>
@@ -241,7 +236,6 @@
         </div>
     </nav>
 
-    <!-- Sub Panels -->
     <div id="panel-court" class="sub-panel">
         <button id="btnPlain">Plain Pit</button>
         <button id="btnFull" class="active">Full Court</button>
@@ -312,7 +306,6 @@
         <button id="btnReset" style="background-color: #444;">Reset Pitch</button>
     </div>
 
-    <!-- Stage Wrapper -->
     <div id="stage-wrapper">
         <div id="container">
             <div id="court-background">
@@ -322,7 +315,6 @@
         </div>
     </div>
 
-    <!-- Unified Preview Modal -->
     <div id="previewModal">
         <p id="modalInstruction"></p>
         <img id="imagePreview" class="preview-content" alt="Tactical Board Image">
@@ -343,7 +335,8 @@
         let penStyle = 'solid'; 
 
         let strokeHistory = []; 
-        let movableElements = []; // プレイヤー、ディスク、テキストオブジェクトを一元管理する配列
+        let movableElements = []; 
+        const pieces = []; 
         let textIdCounter = 0;
 
         let timelineScenes = [];
@@ -389,9 +382,12 @@
             positionAllElements();
         }
 
+        // ライン表示最適化 (Plain・Endzoneモードの線の描き分けを修正)
         function renderCSSCourt(isLandscape) {
-            courtInner.innerHTML = ''; courtInner.style.border = '3px solid #ffffff';
-            if (currentField === 'plain') return;
+            courtInner.innerHTML = ''; 
+            courtInner.style.border = '3px solid #ffffff'; // 無地でも外枠（サイドライン）は常に描画
+
+            if (currentField === 'plain') return; // Plainモードのときは外枠（サイドライン）だけで終了
 
             if (currentField === 'full') {
                 if (!isLandscape) {
@@ -404,6 +400,7 @@
                     createBrickMark('36%', '50%'); createBrickMark('64%', '50%');
                 }
             } else if (currentField === 'half') {
+                // エンド前（Endzone）モード：自陣側のハーフライン（ノイズ線）を除去し、ゴールラインとブリックのみに
                 if (!isLandscape) {
                     const ezLine = document.createElement('div'); ezLine.className = 'ez-line-top'; ezLine.style.top = '45%'; courtInner.appendChild(ezLine);
                     createBrickMark('50%', '90%');
@@ -419,14 +416,12 @@
             courtInner.appendChild(mark);
         }
 
-        // 高度なドラッグ＆ドロップ実装（プレイヤー・テキスト共通処理）
         function bindDragEvents(div, type) {
             let isDraggingElement = false; let startPointer = { x: 0, y: 0 }; startCoords = [];
 
             div.addEventListener('pointerdown', (e) => {
                 if (isDrawingMode || isEraserMode || isTextMode || isPlayingTimeline) return;
                 
-                // Eraserモードでタップされたテキストを削除する処理
                 if (isEraserMode && type === 'text') {
                     movableElements = movableElements.filter(el => el !== div);
                     div.remove(); e.stopPropagation(); return;
@@ -486,7 +481,6 @@
             });
         }
 
-        // コマの生成
         function createPiece(id, type, label, xPercent, yPercent) {
             const div = document.createElement('div');
             div.className = `piece movable-element ${type}`; div.id = id;
@@ -500,28 +494,20 @@
             bindDragEvents(div, type);
         }
 
-        // 【新機能】動かせるテキストラベルの生成
         function createTacticalText(text, xPercent, yPercent, color) {
             textIdCounter++;
             const div = document.createElement('div');
-            div.className = 'movable-element tactical-text';
-            div.id = `text-${textIdCounter}`;
-            div.dataset.xPercent = xPercent;
-            div.dataset.yPercent = yPercent;
-            div.style.color = color;
+            div.className = 'movable-element tactical-text'; div.id = `text-${textIdCounter}`;
+            div.dataset.xPercent = xPercent; div.dataset.yPercent = yPercent; div.style.color = color;
 
-            const span = document.createElement('span');
-            span.innerText = text;
-            div.appendChild(span);
+            const span = document.createElement('span'); span.innerText = text; div.appendChild(span);
 
-            container.appendChild(div);
-            movableElements.push(div);
+            container.appendChild(div); movableElements.push(div);
             bindDragEvents(div, 'text');
             positionAllElements();
         }
 
         function initPieces() {
-            // プレイヤーとディスク、および作成したテキストを全消去して初期化
             movableElements.forEach(el => el.remove());
             movableElements = []; pieces.length = 0; selectedPieces.clear();
 
@@ -592,7 +578,7 @@
             positionAllElements();
         }
 
-        // --- Timeline System (連動してテキストオブジェクトの位置も再現・保存) ---
+        // --- Timeline Core ---
         function updateTimelineUI() {
             const info = document.getElementById('timeline-info');
             if (timelineScenes.length === 0) info.innerText = "NO SCENES SAVED";
@@ -600,43 +586,25 @@
         }
 
         function addCurrentScene() {
-            // 全ての動かせる要素（プレイヤー、ディスク、テキスト）の座標と中身を一括保存
             const sceneData = movableElements.map(p => ({
-                id: p.id,
-                x: p.dataset.xPercent,
-                y: p.dataset.yPercent,
-                isText: p.classList.contains('tactical-text'),
-                text: p.classList.contains('tactical-text') ? p.innerText : "",
-                color: p.style.color
+                id: p.id, x: p.dataset.xPercent, y: p.dataset.yPercent,
+                isText: p.classList.contains('tactical-text'), text: p.classList.contains('tactical-text') ? p.innerText : "", color: p.style.color
             }));
-            timelineScenes.push(sceneData);
-            currentSceneIndex = timelineScenes.length - 1;
-            updateTimelineUI();
+            timelineScenes.push(sceneData); currentSceneIndex = timelineScenes.length - 1; updateTimelineUI();
         }
 
         function loadScene(index) {
             if (index < 0 || index >= timelineScenes.length) return;
-            currentSceneIndex = index;
-            const sceneData = timelineScenes[index];
+            currentSceneIndex = index; const sceneData = timelineScenes[index];
 
-            // 1. まず現在の画面上にあるテキストを一旦リセット
-            document.querySelectorAll('.tactical-text').forEach(t => {
-                movableElements = movableElements.filter(el => el !== t); t.remove();
-            });
+            document.querySelectorAll('.tactical-text').forEach(t => { movableElements = movableElements.filter(el => el !== t); t.remove(); });
 
-            // 2. シーンデータを読み込んで再マッピング
             sceneData.forEach(item => {
                 let el = document.getElementById(item.id);
-                if (!el && item.isText) {
-                    // もしタイムライン保存時に存在したテキストがあれば動的に生成
-                    createTacticalText(item.text, item.x, item.y, item.color);
-                    el = document.getElementById(item.id);
-                }
+                if (!el && item.isText) { createTacticalText(item.text, item.x, item.y, item.color); el = document.getElementById(item.id); }
                 if (el) { el.dataset.xPercent = item.x; el.dataset.yPercent = item.y; }
             });
-
-            positionAllElements();
-            updateTimelineUI();
+            positionAllElements(); updateTimelineUI();
         }
 
         function togglePlayTimeline() {
@@ -657,12 +625,12 @@
             }
         }
 
-        // --- 🎥 動画エクスポートシステム (テキスト移動の補間描画にも完全対応) ---
+        // --- 動画エクスポートライン最適化 ---
         function generateAndExportVideo() {
             if (timelineScenes.length < 2) { alert("Please build a timeline with at least 2 scenes first."); return; }
 
             const exportBtn = document.getElementById('btnExportVideo');
-            exportBtn.innerText = "🔴 Recording..."; exportBtn.disabled = true;
+            exportBtn.innerText = "🔴 Rendering..."; exportBtn.disabled = true;
             
             const recordCanvas = document.createElement('canvas');
             recordCanvas.width = drawingCanvas.width; recordCanvas.height = drawingCanvas.height;
@@ -723,6 +691,13 @@
                         rectx.beginPath(); rectx.moveTo(padX + cw * 0.18, padY); rectx.lineTo(padX + cw * 0.18, padY + ch); rectx.stroke();
                         rectx.beginPath(); rectx.moveTo(padX + cw - cw * 0.18, padY); rectx.lineTo(padX + cw - cw * 0.18, padY + ch); rectx.stroke();
                     }
+                } else if (currentField === 'half') {
+                    // 動画出力時のEndzoneモードでもハーフラインを除外
+                    if (!isLandscape) {
+                        rectx.beginPath(); rectx.moveTo(padX, padY + ch * 0.45); rectx.lineTo(padX + cw, padY + ch * 0.45); rectx.stroke();
+                    } else {
+                        rectx.beginPath(); rectx.moveTo(padX + cw - cw * 0.45, padY); rectx.lineTo(padX + cw - cw * 0.45, padY + ch); rectx.stroke();
+                    }
                 }
 
                 rectx.drawImage(drawingCanvas, 0, 0);
@@ -738,12 +713,8 @@
 
                     rectx.save();
                     if (startP.isText) {
-                        // 動画内へのテキスト描画と移動補間
-                        rectx.fillStyle = startP.color; rectx.font = "bold 13px sans-serif";
-                        rectx.textAlign = "center"; rectx.textBaseline = "middle";
-                        rectx.strokeStyle = "#ffffff"; rectx.lineWidth = 2.5;
-                        rectx.strokeText(startP.text, posX, posY);
-                        rectx.fillText(startP.text, posX, posY);
+                        rectx.fillStyle = startP.color; rectx.font = "bold 13px sans-serif"; rectx.textAlign = "center"; rectx.textBaseline = "middle";
+                        rectx.strokeStyle = "#ffffff"; rectx.lineWidth = 2.5; rectx.strokeText(startP.text, posX, posY); rectx.fillText(startP.text, posX, posY);
                     } else if (startP.id.startsWith('f')) {
                         rectx.fillStyle = '#0055ff'; rectx.strokeStyle = '#ffffff'; rectx.lineWidth = 2;
                         drawRoundRect(rectx, posX - size/2, posY - size/2, size, size, 6); rectx.fill(); rectx.stroke();
@@ -758,13 +729,13 @@
                 });
 
                 frameCount++;
-                if (frameCount >= framesPerScene) { frameCount = 0; sceneIdx++; }
+                if (frameCount >= framesPerScene) { sceneIdx++; frameCount = 0; }
                 requestAnimationFrame(drawRecordFrame);
             }
             drawRecordFrame();
         }
 
-        // --- Drawing Logic ---
+        // --- Drawing Pointer Handler ---
         function startDrawing(e) {
             isDrawing = true; const rect = drawingCanvas.getBoundingClientRect();
             const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
@@ -773,10 +744,7 @@
             
             if (isTextMode) {
                 const str = prompt("Enter text message:");
-                if (str && str.trim() !== "") {
-                    // 動かせるテキストを新しく生成
-                    createTacticalText(str.trim(), xp, yp, drawColor);
-                }
+                if (str && str.trim() !== "") { createTacticalText(str.trim(), xp, yp, drawColor); }
                 isDrawing = false;
             } else if (isEraserMode) {
                 handleDrawingPointer(e);
@@ -856,9 +824,7 @@
             });
         });
         
-        document.getElementById('btnUndo').addEventListener('click', () => {
-            if (strokeHistory.length > 0) { strokeHistory.pop(); redrawSavedLines(); }
-        });
+        document.getElementById('btnUndo').addEventListener('click', () => { if (strokeHistory.length > 0) { strokeHistory.pop(); redrawSavedLines(); } });
         document.getElementById('btnClearLines').addEventListener('click', () => {
             strokeHistory = []; dctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
             document.querySelectorAll('.tactical-text').forEach(t => { movableElements = movableElements.filter(el => el !== t); t.remove(); });
@@ -898,6 +864,14 @@
         drawingCanvas.addEventListener('touchmove', (e) => { if (e.touches.length === 1) { e.preventDefault(); draw(e); } });
         window.addEventListener('touchend', stopDrawing);
 
+        function drawRoundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath(); ctx.moveTo(x + radius, y); ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius); ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height); ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius); ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y); ctx.closePath();
+        }
+
         // --- Save Static Image ---
         document.getElementById('btn-save-nav').addEventListener('click', () => {
             const exportCanvas = document.createElement('canvas'); exportCanvas.width = drawingCanvas.width; exportCanvas.height = drawingCanvas.height;
@@ -935,19 +909,15 @@
             }
             ectx.drawImage(drawingCanvas, 0, 0);
             
-            // 全ての動かせる要素（プレイヤー、ディスク、テキスト）を出力画像に合成
             movableElements.forEach(p => {
                 const rect = p.getBoundingClientRect(); const containerRect = container.getBoundingClientRect();
                 const x = rect.left - containerRect.left; const y = rect.top - containerRect.top; const size = rect.width;
                 ectx.save();
 
                 if (p.classList.contains('tactical-text')) {
-                    // 静止画保存時のテキストレンダリング
-                    ectx.fillStyle = p.style.color; ectx.font = "bold 13px sans-serif";
-                    ectx.textAlign = "center"; ectx.textBaseline = "middle";
+                    ectx.fillStyle = p.style.color; ectx.font = "bold 13px sans-serif"; ectx.textAlign = "center"; ectx.textBaseline = "middle";
                     ectx.strokeStyle = "#ffffff"; ectx.lineWidth = 2.5;
-                    ectx.strokeText(p.innerText, x + p.offsetWidth/2, y + p.offsetHeight/2);
-                    ectx.fillText(p.innerText, x + p.offsetWidth/2, y + p.offsetHeight/2);
+                    ectx.strokeText(p.innerText, x + p.offsetWidth/2, y + p.offsetHeight/2); ectx.fillText(p.innerText, x + p.offsetWidth/2, y + p.offsetHeight/2);
                 } else {
                     if (selectedPieces.has(p)) { ectx.strokeStyle = '#ffeb3b'; ectx.lineWidth = 3; ectx.strokeRect(x - 3, y - 3, size + 6, size + 6); }
                     if (p.classList.contains('friend')) {
@@ -966,17 +936,14 @@
 
             try {
                 const previewModal = document.getElementById('previewModal');
-                document.getElementById('videoPreview').style.display = 'none';
-                document.getElementById('imagePreview').style.display = 'block';
+                document.getElementById('videoPreview').style.display = 'none'; document.getElementById('imagePreview').style.display = 'block';
                 document.getElementById('imagePreview').src = exportCanvas.toDataURL('image/png');
                 document.getElementById('modalInstruction').innerHTML = "📸 Static Image Generated!<br>Long-press or right-click the image to save it to your Photos.";
                 previewModal.style.display = 'flex';
             } catch (e) {}
         });
 
-        document.getElementById('btnCloseModal').addEventListener('click', () => { 
-            document.getElementById('previewModal').style.display = 'none'; document.getElementById('videoPreview').src = ''; 
-        });
+        document.getElementById('btnCloseModal').addEventListener('click', () => { document.getElementById('previewModal').style.display = 'none'; document.getElementById('videoPreview').src = ''; });
         window.addEventListener('resize', adjustSize);
         window.addEventListener('DOMContentLoaded', () => { adjustSize(); initPieces(); updateTimelineUI(); });
     </script>

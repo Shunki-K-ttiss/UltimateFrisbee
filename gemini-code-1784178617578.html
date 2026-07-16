@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Ultimate Tactical Board Pro V22</title>
+
+    <meta name="apple-mobile-web-app-title" content="TacticalBoard">
+    <meta name="application-name" content="TacticalBoard">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            display: flex;
+            flex-direction: row;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* Sidebar Styling */
+        #menu-sidebar {
+            width: 75px;
+            background-color: #1e1e1e;
+            border-right: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px 4px;
+            gap: 12px;
+            z-index: 20;
+            overflow-y: auto;
+        }
+
+        #stage-wrapper {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #121212;
+            padding: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .nav-item {
+            width: 54px;
+            height: 54px;
+            background-color: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 8px;
+            color: #ccc;
+            font-size: 9px;
+            font-weight: bold;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+        }
+        .nav-item.active {
+            background-color: #0076ff;
+            color: #fff;
+            border-color: #00c6ff;
+        }
+        .nav-item svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+
+        /* Expandable Sub Panels */
+        .sub-panel {
+            position: absolute;
+            left: 85px; 
+            background-color: rgba(30, 30, 30, 0.95);
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 8px;
+            display: none; 
+            flex-direction: column;
+            gap: 6px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            z-index: 30;
+            backdrop-filter: blur(10px);
+            min-width: 140px;
+        }
+        .sub-panel.active {
+            display: flex;
+        }
+        .sub-panel button {
+            background-color: #3a3a3a;
+            color: white;
+            border: 1px solid #555;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            text-align: center;
+        }
+        .sub-panel button.active {
+            background-color: #0076ff;
+            border-color: #00c6ff;
+        }
+
+        .color-group { display: flex; gap: 6px; justify-content: center; padding: 4px 0; }
+        .color-picker { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #555; cursor: pointer; }
+        .color-picker.active { border-color: #fff; box-shadow: 0 0 6px #fff; }
+
+        .panel-slider { font-size: 10px; color: #ccc; display: flex; flex-direction: column; gap: 2px; padding: 4px 0; }
+        .panel-slider input[type="range"] { width: 100px; accent-color: #0076ff; }
+
+        /* Responsive Court Container */
+        #container {
+            position: relative;
+            background-color: #9bee60 !important;
+            border: 3px solid #222;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+            display: block;
+        }
+
+        #court-background {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background-color: #9bee60;
+            z-index: 1; pointer-events: none; padding: 5%;
+        }
+        .court-border { width: 100%; height: 100%; position: relative; box-sizing: border-box; }
+
+        .brick-mark {
+            position: absolute; width: 14px; height: 16px; transform: translate(-50%, -50%); pointer-events: none;
+        }
+        .brick-mark::before, .brick-mark::after { content: ''; position: absolute; background: #ffffff; }
+        .brick-mark::before { top: 0; left: 6px; width: 2px; height: 14px; transform: rotate(45deg); }
+        .brick-mark::after { top: 0; left: 6px; width: 2px; height: 14px; transform: rotate(-45deg); }
+
+        .ez-line-top { position: absolute; left: 0; width: 100%; border-bottom: 3px solid #ffffff; }
+        .ez-line-bottom { position: absolute; left: 0; width: 100%; border-top: 3px solid #ffffff; }
+
+        #drawingCanvas {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2;
+            background: transparent !important; pointer-events: none;
+        }
+        #drawingCanvas.active { pointer-events: auto; cursor: crosshair; }
+
+        /* Movable Elements Layout */
+        .movable-element {
+            position: absolute; display: flex; align-items: center; justify-content: center;
+            font-weight: bold; touch-action: none; box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            transition: left 0.1s ease-out, top 0.1s ease-out, width 0.1s, height 0.1s;
+        }
+        .movable-element.dragging {
+            transition: width 0.1s, height 0.1s !important;
+        }
+
+        .piece { z-index: 5; box-shadow: 0 4px 8px rgba(0,0,0,0.4); }
+        .piece.selected { outline: 3px solid #ffeb3b !important; outline-offset: 2px; box-shadow: 0 0 12px #ffeb3b; }
+        .friend { width: 34px; height: 36px; background: #0055ff !important; border: 2px solid #ffffff; color: white; border-radius: 6px; font-size: 13px; }
+        .enemy { width: 34px; height: 36px; background: #ff3333 !important; border: 2px solid #ffffff; color: white; border-radius: 6px; font-size: 13px; }
+        .disk { width: 26px; height: 26px; background: #ffffff !important; border: 2px solid #000000; border-radius: 50%; color: #000000; font-size: 13px; z-index: 6; }
+
+        /* Movable Tactical Text Label */
+        .tactical-text {
+            z-index: 7; background: transparent; padding: 4px 8px; border-radius: 4px;
+            font-size: 13px; white-space: nowrap; cursor: grab; box-shadow: none;
+            text-shadow: -1.5px -1.5px 0 #fff, 1.5px -1.5px 0 #fff, -1.5px 1.5px 0 #fff, 1.5px 1.5px 0 #fff;
+        }
+        .tactical-text span { mix-blend-mode: multiply; }
+
+        .defense-circle {
+            position: absolute; border-radius: 50%; pointer-events: none; z-index: 4; display: none;
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+        }
+        .friend .defense-circle { background-color: rgba(0, 240, 255, 0.18) !important; border: 2px dashed rgba(0, 240, 255, 0.75) !important; }
+        .enemy .defense-circle { background-color: rgba(255, 51, 51, 0.18) !important; border: 2px dashed rgba(255, 80, 80, 0.75) !important; }
+        
+        .hide-number { color: transparent !important; }
+
+        #previewModal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 100; justify-content: center; align-items: center;
+            flex-direction: column; padding: 20px;
+        }
+        #previewModal .preview-content {
+            max-width: 90%; max-height: 65%; border: 2px solid #555; background: #9bee60; box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            display: none;
+        }
+        #previewModal p { margin: 12px 0; font-size: 13px; text-align: center; font-weight: bold; padding: 0 10px; line-height: 1.4; }
+    </style>
+</head>
+<body>
+
+    <nav id="menu-sidebar">
+        <div class="nav-item" onclick="toggleSubPanel('panel-court', this)">
+            <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/></svg>
+            Court
+        </div>
+        <div class="nav-item" onclick="toggleSubPanel('panel-draw', this)">
+            <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-1.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+            Draw
+        </div>
+        <div class="nav-item" onclick="toggleSubPanel('panel-timeline', this)">
+            <svg viewBox="0 0 24 24"><path d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4V6zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H8V4h12v12z"/></svg>
+            Timeline
+        </div>
+        <div class="nav-item" onclick="toggleSubPanel('panel-select', this)">
+            <svg viewBox="0 0 24 24"><path d="M7 11h10v2H7zM4 6h16v2H4zm3 9h10v2H7z"/></svg>
+            Select
+        </div>
+        <div class="nav-item" onclick="toggleSubPanel('panel-adjust', this)">
+            <svg viewBox="0 0 24 24"><path d="M3 17v2h6v-2H3zm0-12v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h6V7h-6V5h-2v6h2V9z"/></svg>
+            Adjust
+        </div>
+        <div class="nav-item" onclick="toggleSubPanel('panel-formation', this)">
+            <svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-1.34s1.34-1.34 1.34-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 11zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+            Set
+        </div>
+        <div class="nav-item" id="btn-save-nav">
+            <svg viewBox="0 0 24 24"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+            Save
+        </div>
+    </nav>
+
+    <div id="panel-court" class="sub-panel">
+        <button id="btnPlain">Plain Pit</button>
+        <button id="btnFull" class="active">Full Court</button>
+        <button id="btnHalf">Endzone</button>
+        <div style="border-top:1px solid #444; margin:4px 0;"></div>
+        <button id="btnAspectAuto" class="active">Auto Ratio</button>
+        <button id="btnAspectPortrait">Portrait</button>
+        <button id="btnAspectLandscape">Landscape</button>
+    </div>
+
+    <div id="panel-draw" class="sub-panel" style="min-width: 140px;">
+        <button id="btnDrawMode">Pen Mode</button>
+        <button id="btnTextMode">Text Tool</button>
+        <div style="border-top:1px solid #444; margin:2px 0;"></div>
+        <button id="btnPenStyleSolid" class="active" style="padding:4px; font-size:10px;">Solid Line</button>
+        <button id="btnPenStyleDash" style="padding:4px; font-size:10px;">Dashed Cut</button>
+        <div class="color-group">
+            <div class="color-picker active" id="color1" style="background: #000000;"></div>
+            <div class="color-picker" id="color2" style="background: #0055ff;"></div>
+            <div class="color-picker" id="color3" style="background: #ff3333;"></div>
+        </div>
+        <button id="btnEraserMode" style="background-color: #444;">Eraser (Tap)</button>
+        <div style="display:flex; gap:4px;">
+            <button id="btnUndo" style="padding:5px; font-size:10px; flex:1; background:#444;">Undo</button>
+            <button id="btnClearLines" style="padding:5px; font-size:10px; flex:1; background:#600;">Clear</button>
+        </div>
+    </div>
+
+    <div id="panel-timeline" class="sub-panel" style="min-width: 155px;">
+        <div id="timeline-info" style="font-size:10px; color:#aaa; text-align:center; font-weight:bold;">SCENE: 0 / 0</div>
+        <button id="btnAddScene" style="background-color:#28a745; border-color:#218838;">+ Add Scene</button>
+        <div style="display:flex; gap:4px;">
+            <button id="btnPrevScene" style="padding:6px; font-size:11px; flex:1;">◀ Prev</button>
+            <button id="btnNextScene" style="padding:6px; font-size:11px; flex:1;">Next ▶</button>
+        </div>
+        <button id="btnPlayTimeline" style="background-color:#0076ff; border-color:#00c6ff; padding:6px;">▶ Play Auto</button>
+        <button id="btnhtmlClearTimeline" style="background-color:#444; padding:5px; font-size:10px;">Clear Timeline</button>
+        <div style="border-top:1px solid #444; margin:4px 0;"></div>
+        <button id="btnExportVideo" style="background-color:#ff9f43; border-color:#f80; padding:8px; font-size:11px; color:#000;">🎥 Generate Video</button>
+    </div>
+
+    <div id="panel-select" class="sub-panel">
+        <button id="btnMultiSelectMode">Multi-Sel: OFF</button>
+        <button id="btnSelectAll">Select All</button>
+        <button id="btnClearSelection">Clear Sel</button>
+    </div>
+
+    <div id="panel-adjust" class="sub-panel" style="min-width: 130px;">
+        <div class="panel-slider">
+            <span>Player Size:</span>
+            <input type="range" id="sliderSize" min="20" max="60" value="36">
+        </div>
+        <div style="border-top:1px solid #444; margin:4px 0;"></div>
+        <div class="panel-slider">
+            <span>Range Circle:</span>
+            <button id="btnToggleCircle" style="padding:4px; font-size:10px; margin-bottom:4px;">OFF</button>
+            <input type="range" id="sliderCircle" min="40" max="250" value="100">
+        </div>
+        <div style="border-top:1px solid #444; margin:4px 0;"></div>
+        <button id="btnToggleNum" class="active">Numbers: ON</button>
+    </div>
+
+    <div id="panel-formation" class="sub-panel" style="min-width: 130px;">
+        <button id="btnVert">Vert Stack</button>
+        <button id="btnHoriz">Horiz Stack</button>
+        <button id="btnHex">Hex (67-345-12)</button>
+        <div style="border-top:1px solid #444; margin:4px 0;"></div>
+        <button id="btnReset" style="background-color: #444;">Reset Pitch</button>
+    </div>
+
+    <div id="stage-wrapper">
+        <div id="container">
+            <div id="court-background">
+                <div class="court-border" id="court-inner"></div>
+            </div>
+            <canvas id="drawingCanvas"></canvas>
+        </div>
+    </div>
+
+    <div id="previewModal">
+        <p id="modalInstruction"></p>
+        <img id="imagePreview" class="preview-content" alt="Tactical Board Image">
+        <video id="videoPreview" class="preview-content" controls playsinline></video>
+        <button id="btnCloseModal" style="background-color: #333; padding: 10px 20px; margin-top:15px; border-radius:6px; font-weight:bold; cursor:pointer;">Close</button>
+    </div>
+
+    <script>
+        const stageWrapper = document.getElementById('stage-wrapper');
+        const container = document.getElementById('container');
+        const courtInner = document.getElementById('court-inner');
+        const drawingCanvas = document.getElementById('drawingCanvas');
+        const dctx = drawingCanvas.getContext('2d');
+
+        let currentField = 'full'; 
+        let isDrawingMode = false; let isEraserMode = false; let isTextMode = false; let isDrawing = false;
+        let drawColor = '#000000'; let showNumbers = true; let aspectMode = 'auto';
+        let penStyle = 'solid'; 
+
+        let strokeHistory = []; 
+        let movableElements = []; 
+        const pieces = []; 
+        let textIdCounter = 0;
+
+        let timelineScenes = [];
+        let currentSceneIndex = -1;
+        let isPlayingTimeline = false;
+        let playbackInterval = null;
+
+        let pieceSize = 36; let isCircleVisible = false; let circleRadius = 100;
+        let isMultiSelectMode = false; let selectedPieces = new Set();
+
+        function toggleSubPanel(panelId, navElement) {
+            const panels = document.querySelectorAll('.sub-panel');
+            const navItems = document.querySelectorAll('.nav-item');
+            const targetPanel = document.getElementById(panelId);
+            const isAlreadyActive = targetPanel.classList.contains('active');
+
+            panels.forEach(p => p.classList.remove('active'));
+            navItems.forEach(n => n.classList.remove('active'));
+
+            if (!isAlreadyActive) {
+                targetPanel.classList.add('active');
+                navElement.classList.add('active');
+                const rect = navElement.getBoundingClientRect();
+                targetPanel.style.top = Math.min(rect.top, window.innerHeight - targetPanel.offsetHeight - 10) + 'px';
+            }
+        }
+
+        function adjustSize() {
+            const wrapperW = stageWrapper.clientWidth;
+            const wrapperH = stageWrapper.clientHeight;
+            let isLandscape = aspectMode === 'landscape' ? true : (aspectMode === 'portrait' ? false : wrapperW > wrapperH);
+            let ratio = isLandscape ? (100 / 37) : (37 / 100);
+            if (currentField === 'half') ratio = isLandscape ? (1.1 / 1) : (1 / 1.1);
+
+            let targetW = wrapperW; let targetH = wrapperW / ratio;
+            if (targetH > wrapperH) { targetH = wrapperH; targetW = wrapperH * ratio; }
+
+            container.style.width = `${targetW}px`; container.style.height = `${targetH}px`;
+            drawingCanvas.width = targetW; drawingCanvas.height = targetH;
+
+            renderCSSCourt(isLandscape);
+            redrawSavedLines();
+            positionAllElements();
+        }
+
+        // バグ修正：実戦的なコート境界線のマッピング
+        function renderCSSCourt(isLandscape) {
+            courtInner.innerHTML = ''; 
+            
+            // 全ての枠線を一旦クリアしてモード別で上書き
+            courtInner.style.border = 'none';
+            courtInner.style.borderTop = 'none';
+            courtInner.style.borderBottom = 'none';
+            courtInner.style.borderLeft = 'none';
+            courtInner.style.borderRight = 'none';
+
+            if (currentField === 'full' || currentField === 'plain') {
+                // フルコートおよび無地は、4辺すべてが正規のサイドライン・エンドライン
+                courtInner.style.border = '3px solid #ffffff';
+            } else if (currentField === 'half') {
+                // エンド前（Endzone）ズームモード：自陣側のカットオフライン（ノイズ線）を除去
+                if (!isLandscape) {
+                    courtInner.style.borderTop = '3px solid #ffffff';    // エンドゾーン奥
+                    courtInner.style.borderLeft = '3px solid #ffffff';   // 左サイドライン
+                    courtInner.style.borderRight = '3px solid #ffffff';  // 右サイドライン
+                    // 下側（自陣側）は完全にノイズ線を排除
+                } else {
+                    courtInner.style.borderRight = '3px solid #ffffff'; // エンドゾーン奥
+                    courtInner.style.borderTop = '3px solid #ffffff';   // 上サイドライン
+                    courtInner.style.borderBottom = '3px solid #ffffff';// 下サイドライン
+                    // 左側（自陣側）は完全にノイズ線を排除
+                }
+            }
+
+            if (currentField === 'plain') return; // 無地モードはここで終了（余計な線を描かない）
+
+            if (currentField === 'full') {
+                if (!isLandscape) {
+                    const topEz = document.createElement('div'); topEz.className = 'ez-line-top'; topEz.style.top = '18%'; courtInner.appendChild(topEz);
+                    const bottomEz = document.createElement('div'); bottomEz.className = 'ez-line-bottom'; bottomEz.style.bottom = '18%'; courtInner.appendChild(bottomEz);
+                    createBrickMark('50%', '36%'); createBrickMark('50%', '64%');
+                } else {
+                    const leftEz = document.createElement('div'); leftEz.style.position = 'absolute'; leftEz.style.top = '0'; leftEz.style.left = '18%'; leftEz.style.height = '100%'; leftEz.style.borderRight = '3px solid #ffffff'; courtInner.appendChild(leftEz);
+                    const rightEz = document.createElement('div'); rightEz.style.position = 'absolute'; rightEz.style.top = '0'; rightEz.style.right = '18%'; rightEz.style.height = '100%'; rightEz.style.borderLeft = '3px solid #ffffff'; courtInner.appendChild(rightEz);
+                    createBrickMark('36%', '50%'); createBrickMark('64%', '50%');
+                }
+            } else if (currentField === 'half') {
+                if (!isLandscape) {
+                    const ezLine = document.createElement('div'); ezLine.className = 'ez-line-top'; ezLine.style.top = '45%'; courtInner.appendChild(ezLine);
+                    createBrickMark('50%', '90%');
+                } else {
+                    const ezLine = document.createElement('div'); ezLine.style.position = 'absolute'; ezLine.style.top = '0'; ezLine.style.right = '45%'; ezLine.style.height = '100%'; ezLine.style.borderLeft = '3px solid #ffffff'; courtInner.appendChild(ezLine);
+                    createBrickMark('10%', '50%');
+                }
+            }
+        }
+
+        function createBrickMark(left, top) {
+            const mark = document.createElement('div'); mark.className = 'brick-mark'; mark.style.left = left; mark.style.top = top;
+            courtInner.appendChild(mark);
+        }
+
+        function bindDragEvents(div, type) {
+            let isDraggingElement = false; let startPointer = { x: 0, y: 0 }; startCoords = [];
+
+            div.addEventListener('pointerdown', (e) => {
+                if (isDrawingMode || isEraserMode || isTextMode || isPlayingTimeline) return;
+                
+                if (isEraserMode && type === 'text') {
+                    movableElements = movableElements.filter(el => el !== div); div.remove(); e.stopPropagation(); return;
+                }
+
+                document.querySelectorAll('.sub-panel').forEach(p => p.classList.remove('active'));
+                document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+
+                if (isMultiSelectMode && type !== 'disk' && type !== 'text') {
+                    if (selectedPieces.has(div)) { selectedPieces.delete(div); div.classList.remove('selected'); } 
+                    else { selectedPieces.add(div); div.classList.add('selected'); }
+                    e.stopPropagation(); return;
+                }
+
+                isDraggingElement = true; div.classList.add('dragging');
+                div.style.zIndex = 10; startPointer.x = e.clientX; startPointer.y = e.clientY;
+                
+                startCoords = [];
+                if (selectedPieces.has(div) && type !== 'text') {
+                    selectedPieces.forEach(p => {
+                        const rect = p.getBoundingClientRect(); const containerRect = container.getBoundingClientRect();
+                        p.classList.add('dragging');
+                        startCoords.push({ element: p, left: rect.left - containerRect.left, top: rect.top - containerRect.top });
+                        p.style.zIndex = 9;
+                    });
+                    div.style.zIndex = 10;
+                } else {
+                    const rect = div.getBoundingClientRect(); const containerRect = container.getBoundingClientRect();
+                    startCoords.push({ element: div, left: rect.left - containerRect.left, top: rect.top - containerRect.top });
+                }
+                div.setPointerCapture(e.pointerId); e.stopPropagation();
+            });
+
+            div.addEventListener('pointermove', (e) => {
+                if (!isDraggingElement) return;
+                const containerRect = container.getBoundingClientRect();
+                const deltaX = e.clientX - startPointer.x; const deltaY = e.clientY - startPointer.y;
+
+                startCoords.forEach(coord => {
+                    let newLeft = coord.left + deltaX; let newTop = coord.top + deltaY;
+                    newLeft = Math.max(0, Math.min(newLeft, containerRect.width - coord.element.offsetWidth));
+                    newTop = Math.max(0, Math.min(newTop, containerRect.height - coord.element.offsetHeight));
+                    coord.element.style.left = newLeft + 'px'; coord.element.style.top = newTop + 'px';
+                    coord.element.dataset.xPercent = (newLeft / containerRect.width) * 100;
+                    coord.element.dataset.yPercent = (newTop / containerRect.height) * 100;
+                });
+            });
+
+            div.addEventListener('pointerup', (e) => {
+                if (!isDraggingElement) return;
+                isDraggingElement = false; div.classList.remove('dragging');
+                startCoords.forEach(coord => { 
+                    coord.element.classList.remove('dragging');
+                    coord.element.style.zIndex = (coord.element.classList.contains('disk')) ? 6 : 5; 
+                });
+                div.releasePointerCapture(e.pointerId);
+            });
+        }
+
+        function createPiece(id, type, label, xPercent, yPercent) {
+            const div = document.createElement('div');
+            div.className = `piece movable-element ${type}`; div.id = id;
+            const labelSpan = document.createElement('span'); labelSpan.innerText = label; div.appendChild(labelSpan);
+            div.dataset.xPercent = xPercent; div.dataset.yPercent = yPercent;
+
+            if (type !== 'disk') {
+                const circle = document.createElement('div'); circle.className = 'defense-circle'; div.appendChild(circle);
+            }
+            container.appendChild(div); pieces.push(div); movableElements.push(div);
+            bindDragEvents(div, type);
+        }
+
+        function createTacticalText(text, xPercent, yPercent, color) {
+            textIdCounter++;
+            const div = document.createElement('div');
+            div.className = 'movable-element tactical-text'; div.id = `text-${textIdCounter}`;
+            div.dataset.xPercent = xPercent; div.dataset.yPercent = yPercent; div.style.color = color;
+
+            const span = document.createElement('span'); span.innerText = text; div.appendChild(span);
+
+            container.appendChild(div); movableElements.push(div);
+            bindDragEvents(div, 'text');
+            positionAllElements();
+        }
+
+        function initPieces() {
+            movableElements.forEach(el => el.remove());
+            movableElements = []; pieces.length = 0; selectedPieces.clear();
+
+            for(let i = 1; i <= 7; i++) { createPiece(`f${i}`, 'friend', i.toString(), 15 + (i * 8), 75); }
+            for(let i = 1; i <= 7; i++) { createPiece(`e${i}`, 'enemy', i.toString(), 15 + (i * 8), 25); }
+            createPiece('disk', 'disk', '★', 50, 50);
+
+            applyPieceSize(); applyCircleSettings(); positionAllElements();
+        }
+
+        function positionAllElements() {
+            if (container.clientWidth === 0) return;
+            movableElements.forEach(p => {
+                p.style.left = `calc(${p.dataset.xPercent}% - ${p.offsetWidth / 2}px)`;
+                p.style.top = `calc(${p.dataset.yPercent}% - ${p.offsetHeight / 2}px)`;
+            });
+        }
+
+        function applyPieceSize() {
+            pieces.forEach(p => {
+                let factor = (p.id === 'disk') ? 0.8 : 1.0;
+                p.style.width = `${pieceSize * factor}px`; p.style.height = `${pieceSize * factor}px`;
+                p.style.fontSize = `${pieceSize * (p.id === 'disk' ? 0.4 : 0.38)}px`;
+            });
+            positionAllElements();
+        }
+
+        function applyCircleSettings() {
+            pieces.forEach(p => {
+                const circle = p.querySelector('.defense-circle');
+                if (circle) { circle.style.display = isCircleVisible ? 'block' : 'none'; circle.style.width = `${circleRadius}px`; circle.style.height = `${circleRadius}px`; }
+            });
+        }
+
+        // 大幅改善：実戦スケールに合わせたコンパクトなフォーメーション距離設計
+        function setFormation(type) {
+            const isLandscape = container.clientWidth > container.clientHeight;
+            let fCoords = []; let eCoords = []; let dCoord = {x: 50, y: 50};
+
+            if (!isLandscape) {
+                if (type === 'vertical') {
+                    // 縦スタ（コンパクト）: 密集度を高めてリアルなスペースを作る
+                    fCoords = [ 
+                        {x: 43, y: 70}, {x: 57, y: 70}, // ハンドラー(コンパクト)
+                        {x: 50, y: 52}, {x: 50, y: 46}, {x: 50, y: 40}, {x: 50, y: 34}, {x: 50, y: 28} // タイトなスタック5枚
+                    ];
+                    eCoords = fCoords.map(c => ({x: c.x, y: c.y - 2.5})); dCoord = {x: 40, y: 70};
+                } else if (type === 'horizontal') {
+                    // 横スタ（コンパクト）
+                    fCoords = [ 
+                        {x: 35, y: 72}, {x: 50, y: 72}, {x: 65, y: 72}, 
+                        {x: 30, y: 42}, {x: 43, y: 42}, {x: 57, y: 42}, {x: 70, y: 42}
+                    ];
+                    eCoords = fCoords.map(c => ({x: c.x, y: c.y - 4})); dCoord = {x: 50, y: 75};
+                } else if (type === 'hex') {
+                    // ヘックス（コンパクト）
+                    fCoords = [ 
+                        {x: 40, y: 70}, {x: 60, y: 70}, 
+                        {x: 30, y: 50}, {x: 50, y: 50}, {x: 70, y: 50}, 
+                        {x: 40, y: 30}, {x: 60, y: 30} 
+                    ];
+                    eCoords = fCoords.map(c => ({x: c.x - 3, y: c.y - 3})); dCoord = {x: 40, y: 65};
+                }
+            } else {
+                if (type === 'vertical') {
+                    // 横向き縦スタ（コンパクト）
+                    fCoords = [ 
+                        {x: 30, y: 43}, {x: 30, y: 57}, 
+                        {x: 48, y: 50}, {x: 54, y: 50}, {x: 60, y: 50}, {x: 66, y: 50}, {x: 72, y: 50}
+                    ];
+                    eCoords = fCoords.map(c => ({x: c.x + 2.5, y: c.y})); dCoord = {x: 30, y: 40};
+                } else if (type === 'horizontal') {
+                    // 横向き横スタ（コンパクト）
+                    fCoords = [ 
+                        {x: 28, y: 35}, {x: 28, y: 50}, {x: 28, y: 65}, 
+                        {x: 58, y: 30}, {x: 58, y: 43}, {x: 58, y: 57}, {x: 58, y: 70}
+                    ];
+                    eCoords = fCoords.map(c => ({x: c.x + 4, y: c.y})); dCoord = {x: 25, y: 50};
+                } else if (type === 'hex') {
+                    // 横向きヘックス（コンパクト）
+                    fCoords = [ 
+                        {x: 30, y: 40}, {x: 30, y: 60}, 
+                        {x: 50, y: 30}, {x: 50, y: 50}, {x: 50, y: 70}, 
+                        {x: 70, y: 40}, {x: 70, y: 60} 
+                    ];
+                    eCoords = fCoords.map(c => ({x: c.x + 3, y: c.y - 3})); dCoord = {x: 35, y: 40};
+                }
+            }
+
+            for (let i = 0; i < 7; i++) {
+                document.getElementById(`f${i+1}`).dataset.xPercent = fCoords[i].x; document.getElementById(`f${i+1}`).dataset.yPercent = fCoords[i].y;
+                document.getElementById(`e${i+1}`).dataset.xPercent = eCoords[i].x; document.getElementById(`e${i+1}`).dataset.yPercent = eCoords[i].y;
+            }
+            document.getElementById('disk').dataset.xPercent = dCoord.x; document.getElementById('disk').dataset.yPercent = dCoord.y;
+            positionAllElements();
+        }
+
+        // --- Timeline Core ---
+        function updateTimelineUI() {
+            const info = document.getElementById('timeline-info');
+            if (timelineScenes.length === 0) info.innerText = "NO SCENES SAVED";
+            else info.innerText = `SCENE: ${currentSceneIndex + 1} / ${timelineScenes.length}`;
+        }
+
+        function addCurrentScene() {
+            const sceneData = movableElements.map(p => ({
+                id: p.id, x: p.dataset.xPercent, y: p.dataset.yPercent,
+                isText: p.classList.contains('tactical-text'), text: p.classList.contains('tactical-text') ? p.innerText : "", color: p.style.color
+            }));
+            timelineScenes.push(sceneData); currentSceneIndex = timelineScenes.length - 1; updateTimelineUI();
+        }
+
+        function loadScene(index) {
+            if (index < 0 || index >= timelineScenes.length) return;
+            currentSceneIndex = index; const sceneData = timelineScenes[index];
+
+            document.querySelectorAll('.tactical-text').forEach(t => { movableElements = movableElements.filter(el => el !== t); t.remove(); });
+
+            sceneData.forEach(item => {
+                let el = document.getElementById(item.id);
+                if (!el && item.isText) { createTacticalText(item.text, item.x, item.y, item.color); el = document.getElementById(item.id); }
+                if (el) { el.dataset.xPercent = item.x; el.dataset.yPercent = item.y; }
+            });
+            positionAllElements(); updateTimelineUI();
+        }
+
+        function togglePlayTimeline() {
+            if (timelineScenes.length < 2) { alert("Add at least 2 scenes to animate."); return; }
+            isPlayingTimeline = !isPlayingTimeline;
+            const playBtn = document.getElementById('btnPlayTimeline');
+
+            if (isPlayingTimeline) {
+                playBtn.innerText = "⏸ Pause"; playBtn.style.backgroundColor = "#ff9f43";
+                if (currentSceneIndex >= timelineScenes.length - 1) currentSceneIndex = -1;
+                playbackInterval = setInterval(() => {
+                    if (currentSceneIndex < timelineScenes.length - 1) loadScene(currentSceneIndex + 1);
+                    else togglePlayTimeline();
+                }, 1000); 
+            } else {
+                playBtn.innerText = "▶ Play Auto"; playBtn.style.backgroundColor = "#0076ff";
+                clearInterval(playbackInterval);
+            }
+        }
+
+        // --- 🎥 動画エクスポートラインの境界最適化描画 ---
+        function generateAndExportVideo() {
+            if (timelineScenes.length < 2) { alert("Please build a timeline with at least 2 scenes first."); return; }
+
+            const exportBtn = document.getElementById('btnExportVideo');
+            exportBtn.innerText = "🔴 Rendering..."; exportBtn.disabled = true;
+            
+            const recordCanvas = document.createElement('canvas');
+            recordCanvas.width = drawingCanvas.width; recordCanvas.height = drawingCanvas.height;
+            const rectx = recordCanvas.getContext('2d');
+            const stream = recordCanvas.captureStream(30);
+            
+            let options = { mimeType: 'video/mp4;codecs=avc1' }; 
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/webm;codecs=vp9' };
+            if (!MediaRecorder.isTypeSupported(options.mimeType)) options = { mimeType: 'video/webm' };
+
+            const recorder = new MediaRecorder(stream, options);
+            const chunks = [];
+            recorder.ondataavailable = e => { if (e.data && e.data.size > 0) chunks.push(e.data); };
+
+            recorder.onstop = () => {
+                const blob = new Blob(chunks, { type: options.mimeType.includes('mp4') ? 'video/mp4' : 'video/webm' });
+                const url = URL.createObjectURL(blob);
+                
+                const previewModal = document.getElementById('previewModal');
+                const videoPreview = document.getElementById('videoPreview');
+                const imagePreview = document.getElementById('imagePreview');
+                const instruction = document.getElementById('modalInstruction');
+
+                imagePreview.style.display = 'none'; videoPreview.style.display = 'block'; videoPreview.src = url;
+
+                const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                if (isIOS) {
+                    instruction.innerHTML = "🎥 Video Generated!<br>【iPhoneでのフォトライブラリ保存方法】<br>1. 下の動画を再生し、プレイヤー内の『共有ボタン』を押す<br>2. メニューから『ビデオを保存』を選択すると、写真アプリに直接入ります。";
+                } else {
+                    instruction.innerHTML = "🎥 Video Generated!<br>Right-click or long-press the video player to save it to your device.";
+                }
+
+                previewModal.style.display = 'flex';
+                exportBtn.innerText = "🎥 Generate Video"; exportBtn.disabled = false;
+            };
+
+            let sceneIdx = 0; let frameCount = 0; const framesPerScene = 30; 
+            recorder.start();
+
+            function drawRecordFrame() {
+                if (sceneIdx >= timelineScenes.length - 1) { setTimeout(() => { recorder.stop(); }, 400); return; }
+
+                const startData = timelineScenes[sceneIdx]; const endData = timelineScenes[sceneIdx + 1];
+                const progress = frameCount / framesPerScene;
+
+                // 芝生背景の塗りつぶし
+                rectx.fillStyle = '#9bee60'; rectx.fillRect(0, 0, recordCanvas.width, recordCanvas.height);
+                
+                // キャンバスエクスポート側の境界線ロジックの修正
+                const padX = recordCanvas.width * 0.05; const padY = recordCanvas.height * 0.05;
+                const cw = recordCanvas.width - (padX * 2); const ch = recordCanvas.height - (padY * 2);
+                rectx.strokeStyle = '#ffffff'; rectx.lineWidth = 3;
+
+                const isLandscape = recordCanvas.width > recordCanvas.height;
+
+                if (currentField === 'full' || currentField === 'plain') {
+                    rectx.strokeRect(padX, padY, cw, ch); // 4辺すべてに枠線を引く
+                } else if (currentField === 'half') {
+                    // エンド前（ズーム）モード：自陣側の線を完全にカット
+                    rectx.beginPath();
+                    if (!isLandscape) {
+                        rectx.moveTo(padX, padY + ch); rectx.lineTo(padX, padY); // 左サイド
+                        rectx.lineTo(padX + cw, padY);                          // 奥エンドライン
+                        rectx.lineTo(padX + cw, padY + ch);                     // 右サイド
+                    } else {
+                        rectx.moveTo(padX, padY); rectx.lineTo(padX + cw, padY); // 上サイド
+                        rectx.lineTo(padX + cw, padY + ch);                     // 奥エンドライン
+                        rectx.lineTo(padX, padY + ch);                          // 下サイド
+                    }
+                    rectx.stroke();
+                }
+
+                if (currentField === 'full') {
+                    rectx.beginPath();
+                    if (!isLandscape) {
+                        rectx.moveTo(padX, padY + ch * 0.18); rectx.lineTo(padX + cw, padY + ch * 0.18);
+                        rectx.moveTo(padX, padY + ch - ch * 0.18); rectx.lineTo(padX + cw, padY + ch - ch * 0.18);
+                    } else {
+                        rectx.moveTo(padX + cw * 0.18, padY); rectx.lineTo(padX + cw * 0.18, padY + ch);
+                        rectx.moveTo(padX + cw - cw * 0.18, padY); rectx.lineTo(padX + cw - cw * 0.18, padY + ch);
+                    }
+                    rectx.stroke();
+                } else if (currentField === 'half') {
+                    rectx.beginPath();
+                    if (!isLandscape) {
+                        rectx.moveTo(padX, padY + ch * 0.45); rectx.lineTo(padX + cw, padY + ch * 0.45);
+                    } else {
+                        rectx.moveTo(padX + cw - cw * 0.45, padY); rectx.lineTo(padX + cw - cw * 0.45, padY + ch);
+                    }
+                    rectx.stroke();
+                }
+
+                rectx.drawImage(drawingCanvas, 0, 0);
+
+                startData.forEach((startP, i) => {
+                    const endP = endData.find(e => e.id === startP.id) || startP;
+                    const curXPercent = startP.x + (endP.x - startP.x) * progress;
+                    const curYPercent = startP.y + (endP.y - startP.y) * progress;
+
+                    const size = pieceSize;
+                    const posX = (curXPercent / 100) * recordCanvas.width;
+                    const posY = (curYPercent / 100) * recordCanvas.height;
+
+                    rectx.save();
+                    if (startP.isText) {
+                        rectx.fillStyle = startP.color; rectx.font = "bold 13px sans-serif"; rectx.textAlign = "center"; rectx.textBaseline = "middle";
+                        rectx.strokeStyle = "#ffffff"; rectx.lineWidth = 2.5; rectx.strokeText(startP.text, posX, posY); rectx.fillText(startP.text, posX, posY);
+                    } else if (startP.id.startsWith('f')) {
+                        rectx.fillStyle = '#0055ff'; rectx.strokeStyle = '#ffffff'; rectx.lineWidth = 2;
+                        drawRoundRect(rectx, posX - size/2, posY - size/2, size, size, 6); rectx.fill(); rectx.stroke();
+                    } else if (startP.id.startsWith('e')) {
+                        rectx.fillStyle = '#ff3333'; rectx.strokeStyle = '#ffffff'; rectx.lineWidth = 2;
+                        drawRoundRect(rectx, posX - size/2, posY - size/2, size, size, 6); rectx.fill(); rectx.stroke();
+                    } else {
+                        rectx.fillStyle = '#ffffff'; rectx.strokeStyle = '#000000'; rectx.lineWidth = 2;
+                        rectx.beginPath(); rectx.arc(posX, posY, size * 0.4, 0, Math.PI*2); rectx.fill(); rectx.stroke();
+                    }
+                    rectx.restore();
+                });
+
+                frameCount++;
+                if (frameCount >= framesPerScene) { sceneIdx++; frameCount = 0; }
+                requestAnimationFrame(drawRecordFrame);
+            }
+            drawRecordFrame();
+        }
+
+        // --- Drawing Pointer Handler ---
+        function startDrawing(e) {
+            isDrawing = true; const rect = drawingCanvas.getBoundingClientRect();
+            const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
+            const y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
+            const xp = (x / rect.width) * 100; const yp = (y / rect.height) * 100;
+            
+            if (isTextMode) {
+                const str = prompt("Enter text message:");
+                if (str && str.trim() !== "") { createTacticalText(str.trim(), xp, yp, drawColor); }
+                isDrawing = false;
+            } else if (isEraserMode) {
+                handleDrawingPointer(e);
+            } else if (isDrawingMode) {
+                currentStroke = { color: drawColor, style: penStyle, points: [{ xPercent: xp, yPercent: yp }] };
+                dctx.beginPath(); dctx.moveTo(x, y);
+                dctx.strokeStyle = drawColor; dctx.lineWidth = 4; dctx.lineCap = 'round'; dctx.lineJoin = 'round';
+                if (penStyle === 'dashed') dctx.setLineDash([8, 6]); else dctx.setLineDash([]);
+                dctx.stroke();
+            }
+        }
+
+        function draw(e) { if (isDrawing) handleDrawingPointer(e); }
+        function stopDrawing() { if (isDrawing && currentStroke && !isEraserMode) strokeHistory.push(currentStroke); isDrawing = false; currentStroke = null; }
+
+        function redrawSavedLines() {
+            const w = drawingCanvas.width; const h = drawingCanvas.height; dctx.clearRect(0, 0, w, h);
+            strokeHistory.forEach(stroke => {
+                if (stroke.points.length < 2) return;
+                dctx.beginPath(); dctx.moveTo((stroke.points[0].xPercent / 100) * w, (stroke.points[0].yPercent / 100) * h);
+                for (let i = 1; i < stroke.points.length; i++) dctx.lineTo((stroke.points[i].xPercent / 100) * w, (stroke.points[i].yPercent / 100) * h);
+                dctx.strokeStyle = stroke.color; dctx.lineWidth = 4; dctx.lineCap = 'round'; dctx.lineJoin = 'round';
+                if (stroke.style === 'dashed') dctx.setLineDash([8, 6]); else dctx.setLineDash([]);
+                dctx.stroke();
+            });
+            dctx.setLineDash([]); 
+        }
+
+        // --- Controls Event Listeners ---
+        document.getElementById('btnPlain').addEventListener('click', () => { currentField = 'plain'; adjustSize(); });
+        document.getElementById('btnFull').addEventListener('click', () => { currentField = 'full'; adjustSize(); });
+        document.getElementById('btnHalf').addEventListener('click', () => { currentField = 'half'; adjustSize(); });
+        document.getElementById('btnAspectAuto').addEventListener('click', () => { aspectMode = 'auto'; adjustSize(); });
+        document.getElementById('btnAspectPortrait').addEventListener('click', () => { aspectMode = 'portrait'; adjustSize(); });
+        document.getElementById('btnAspectLandscape').addEventListener('click', () => { aspectMode = 'landscape'; adjustSize(); });
+
+        btnMultiSelectMode.addEventListener('click', () => {
+            isMultiSelectMode = !isMultiSelectMode; btnMultiSelectMode.innerText = isMultiSelectMode ? 'Multi-Sel: ON' : 'Multi-Sel: OFF'; btnMultiSelectMode.classList.toggle('active', isMultiSelectMode);
+        });
+        document.getElementById('btnSelectAll').addEventListener('click', () => {
+            if (!isMultiSelectMode) { isMultiSelectMode = true; btnMultiSelectMode.innerText = 'Multi-Sel: ON'; btnMultiSelectMode.classList.add('active'); }
+            pieces.forEach(p => { if (p.id !== 'disk') { selectedPieces.add(p); p.classList.add('selected'); } });
+        });
+        document.getElementById('btnClearSelection').addEventListener('click', () => { selectedPieces.forEach(p => p.classList.remove('selected')); selectedPieces.clear(); });
+        document.getElementById('sliderSize').addEventListener('input', (e) => { pieceSize = parseInt(e.target.value); applyPieceSize(); });
+        
+        const btnToggleCircle = document.getElementById('btnToggleCircle');
+        btnToggleCircle.addEventListener('click', () => { isCircleVisible = !isCircleVisible; btnToggleCircle.innerText = isCircleVisible ? 'ON' : 'OFF'; btnToggleCircle.classList.toggle('active', isCircleVisible); applyCircleSettings(); });
+        document.getElementById('sliderCircle').addEventListener('input', (e) => { circleRadius = parseInt(e.target.value); applyCircleSettings(); });
+
+        const btnDrawMode = document.getElementById('btnDrawMode'); const btnTextMode = document.getElementById('btnTextMode'); const btnEraserMode = document.getElementById('btnEraserMode');
+        const btnPenSolid = document.getElementById('btnPenStyleSolid'); const btnPenDash = document.getElementById('btnPenStyleDash');
+
+        function toggleDrawTools(mode) {
+            isDrawingMode = (mode === 'draw'); isTextMode = (mode === 'text'); isEraserMode = (mode === 'erase');
+            [btnDrawMode, btnTextMode, btnEraserMode].forEach(b => b.classList.remove('active'));
+            if(isDrawingMode) btnDrawMode.classList.add('active'); if(isTextMode) btnTextMode.classList.add('active'); if(isEraserMode) btnEraserMode.classList.add('active');
+            drawingCanvas.classList.toggle('active', isDrawingMode || isTextMode || isEraserMode);
+        }
+        btnDrawMode.addEventListener('click', () => toggleDrawTools(isDrawingMode ? 'none' : 'draw'));
+        btnTextMode.addEventListener('click', () => toggleDrawTools(isTextMode ? 'none' : 'text'));
+        btnEraserMode.addEventListener('click', () => toggleDrawTools(isEraserMode ? 'none' : 'erase'));
+
+        btnPenSolid.addEventListener('click', () => { penStyle = 'solid'; btnPenSolid.classList.add('active'); btnPenDash.classList.remove('active'); });
+        btnPenDash.addEventListener('click', () => { penStyle = 'dashed'; btnPenDash.classList.add('active'); btnPenSolid.classList.remove('active'); });
+
+        const colors = [{ id: 'color1', val: '#000000' }, { id: 'color2', val: '#0055ff' }, { id: 'color3', val: '#ff3333' }];
+        colors.forEach(item => {
+            document.getElementById(item.id).addEventListener('click', () => {
+                drawColor = item.val; if(!isTextMode) toggleDrawTools('draw');
+                colors.forEach(c => document.getElementById(c.id).classList.toggle('active', c.id === item.id));
+            });
+        });
+        
+        document.getElementById('btnUndo').addEventListener('click', () => { if (strokeHistory.length > 0) { strokeHistory.pop(); redrawSavedLines(); } });
+        document.getElementById('btnClearLines').addEventListener('click', () => {
+            strokeHistory = []; dctx.clearRect(0, 0, drawingCanvas.width, drawingCanvas.height);
+            document.querySelectorAll('.tactical-text').forEach(t => { movableElements = movableElements.filter(el => el !== t); t.remove(); });
+        });
+
+        // Timeline events
+        document.getElementById('btnAddScene').addEventListener('click', addCurrentScene);
+        document.getElementById('btnPrevScene').addEventListener('click', () => loadScene(currentSceneIndex - 1));
+        document.getElementById('btnNextScene').addEventListener('click', () => loadScene(currentSceneIndex + 1));
+        document.getElementById('btnPlayTimeline').addEventListener('click', togglePlayTimeline);
+        document.getElementById('btnhtmlClearTimeline').addEventListener('click', () => {
+            clearInterval(playbackInterval); isPlayingTimeline = false;
+            document.getElementById('btnPlayTimeline').innerText = "▶ Play Auto"; document.getElementById('btnPlayTimeline').style.backgroundColor = "#0076ff";
+            timelineScenes = []; currentSceneIndex = -1; updateTimelineUI();
+        });
+        
+        document.getElementById('btnExportVideo').addEventListener('click', generateAndExportVideo);
+
+        const btnToggleNum = document.getElementById('btnToggleNum');
+        btnToggleNum.addEventListener('click', () => {
+            showNumbers = !showNumbers; btnToggleNum.innerText = showNumbers ? 'Numbers: ON' : 'Numbers: OFF'; btnToggleNum.classList.toggle('active', showNumbers);
+            pieces.forEach(p => { if (p.id !== 'disk') { const span = p.querySelector('span'); if (span) span.classList.toggle('hide-number', !showNumbers); } });
+        });
+
+        document.getElementById('btnReset').addEventListener('click', () => { initPieces(); });
+        document.getElementById('btnVert').addEventListener('click', () => setFormation('vertical'));
+        document.getElementById('btnHoriz').addEventListener('click', () => setFormation('horizontal'));
+        document.getElementById('btnHex').addEventListener('click', () => setFormation('hex'));
+
+        stageWrapper.addEventListener('pointerdown', () => {
+            document.querySelectorAll('.sub-panel').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        });
+
+        drawingCanvas.addEventListener('mousedown', startDrawing); drawingCanvas.addEventListener('mousemove', draw); window.addEventListener('mouseup', stopDrawing);
+        drawingCanvas.addEventListener('touchstart', (e) => { if (e.touches.length === 1) startDrawing(e); });
+        drawingCanvas.addEventListener('touchmove', (e) => { if (e.touches.length === 1) { e.preventDefault(); draw(e); } });
+        window.addEventListener('touchend', stopDrawing);
+
+        function drawRoundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath(); ctx.moveTo(x + radius, y); ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius); ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height); ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius); ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y); ctx.closePath();
+        }
+
+        // --- Save Static Image 境界線最適化 ---
+        document.getElementById('btn-save-nav').addEventListener('click', () => {
+            const exportCanvas = document.createElement('canvas'); exportCanvas.width = drawingCanvas.width; exportCanvas.height = drawingCanvas.height;
+            const ectx = exportCanvas.getContext('2d');
+            ectx.fillStyle = '#9bee60'; ectx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+            
+            const padX = exportCanvas.width * 0.05; const padY = exportCanvas.height * 0.05;
+            const cw = exportCanvas.width - (padX * 2); const ch = exportCanvas.height - (padY * 2);
+            ectx.strokeStyle = '#ffffff'; ectx.lineWidth = 3;
+
+            const isLandscape = exportCanvas.width > exportCanvas.height;
+
+            if (currentField === 'full' || currentField === 'plain') {
+                ectx.strokeRect(padX, padY, cw, ch);
+            } else if (currentField === 'half') {
+                ectx.beginPath();
+                if (!isLandscape) {
+                    ectx.moveTo(padX, padY + ch); ectx.lineTo(padX, padY);
+                    ectx.lineTo(padX + cw, padY);
+                    ectx.lineTo(padX + cw, padY + ch);
+                } else {
+                    ectx.moveTo(padX, padY); ectx.lineTo(padX + cw, padY);
+                    ectx.lineTo(padX + cw, padY + ch);
+                    ectx.lineTo(padX, padY + ch);
+                }
+                ectx.stroke();
+            }
+
+            if (currentField === 'full') {
+                ectx.beginPath();
+                if (!isLandscape) {
+                    ectx.moveTo(padX, padY + ch * 0.18); ectx.lineTo(padX + cw, padY + ch * 0.18);
+                    ectx.moveTo(padX, padY + ch - ch * 0.18); ectx.lineTo(padX + cw, padY + ch - ch * 0.18);
+                } else {
+                    ectx.moveTo(padX + cw * 0.18, padY); ectx.lineTo(padX + cw * 0.18, padY + ch);
+                    ectx.moveTo(padX + cw - cw * 0.18, padY); ectx.lineTo(padX + cw - cw * 0.18, padY + ch);
+                }
+                ectx.stroke();
+            } else if (currentField === 'half') {
+                ectx.beginPath();
+                if (!isLandscape) {
+                    ectx.moveTo(padX, padY + ch * 0.45); ectx.lineTo(padX + cw, padY + ch * 0.45);
+                } else {
+                    ectx.moveTo(padX + cw - cw * 0.45, padY); ectx.lineTo(padX + cw - cw * 0.45, padY + ch);
+                }
+                ectx.stroke();
+            }
+
+            if (isCircleVisible) {
+                pieces.forEach(p => {
+                    if (p.id === 'disk') return;
+                    const rect = p.getBoundingClientRect(); const containerRect = container.getBoundingClientRect();
+                    const centerX = (rect.left - containerRect.left) + (rect.width / 2); const centerY = (rect.top - containerRect.top) + (rect.height / 2);
+                    ectx.save(); ectx.beginPath(); ectx.arc(centerX, centerY, circleRadius / 2, 0, Math.PI * 2);
+                    if (p.classList.contains('friend')) { ectx.fillStyle = 'rgba(0, 240, 255, 0.18)'; ectx.strokeStyle = 'rgba(0, 240, 255, 0.75)'; } 
+                    else { ectx.fillStyle = 'rgba(255, 51, 51, 0.18)'; ectx.strokeStyle = 'rgba(255, 80, 80, 0.75)'; }
+                    ectx.setLineDash([4, 4]); ectx.lineWidth = 2; ectx.fill(); ectx.stroke(); ectx.restore();
+                });
+            }
+            ectx.drawImage(drawingCanvas, 0, 0);
+            
+            movableElements.forEach(p => {
+                const rect = p.getBoundingClientRect(); const containerRect = container.getBoundingClientRect();
+                const x = rect.left - containerRect.left; const y = rect.top - containerRect.top; const size = rect.width;
+                ectx.save();
+
+                if (p.classList.contains('tactical-text')) {
+                    ectx.fillStyle = p.style.color; ectx.font = "bold 13px sans-serif"; ectx.textAlign = "center"; ectx.textBaseline = "middle";
+                    ectx.strokeStyle = "#ffffff"; ectx.lineWidth = 2.5;
+                    ectx.strokeText(p.innerText, x + p.offsetWidth/2, y + p.offsetHeight/2); ectx.fillText(p.innerText, x + p.offsetWidth/2, y + p.offsetHeight/2);
+                } else {
+                    if (selectedPieces.has(p)) { ectx.strokeStyle = '#ffeb3b'; ectx.lineWidth = 3; ectx.strokeRect(x - 3, y - 3, size + 6, size + 6); }
+                    if (p.classList.contains('friend')) {
+                        ectx.fillStyle = '#0055ff'; ectx.strokeStyle = '#ffffff'; ectx.lineWidth = 2; drawRoundRect(ectx, x, y, size, size, 6); ectx.fill(); ectx.stroke();
+                        if (showNumbers) { ectx.fillStyle = '#ffffff'; ectx.font = `bold ${size * 0.4}px sans-serif`; ectx.textAlign = 'center'; ectx.textBaseline = 'middle'; ectx.fillText(p.innerText.trim(), x + size/2, y + size/2); }
+                    } else if (p.classList.contains('enemy')) {
+                        ectx.fillStyle = '#ff3333'; ectx.strokeStyle = '#ffffff'; ectx.lineWidth = 2; drawRoundRect(ectx, x, y, size, size, 6); ectx.fill(); ectx.stroke();
+                        if (showNumbers) { ectx.fillStyle = '#ffffff'; ectx.font = `bold ${size * 0.4}px sans-serif`; ectx.textAlign = 'center'; ectx.textBaseline = 'middle'; ectx.fillText(p.innerText.trim(), x + size/2, y + size/2); }
+                    } else if (p.classList.contains('disk')) {
+                        ectx.fillStyle = '#ffffff'; ectx.strokeStyle = '#000000'; ectx.lineWidth = 2; ectx.beginPath(); ectx.arc(x + size/2, y + size/2, size/2 - 1, 0, Math.PI * 2); ectx.fill(); ectx.stroke();
+                        ectx.fillStyle = '#000000'; ectx.font = `${size * 0.5}px sans-serif`; ectx.textAlign = 'center'; ectx.textBaseline = 'middle'; ectx.fillText('★', x + size/2, y + size/2);
+                    }
+                }
+                ectx.restore();
+            });
+
+            try {
+                const previewModal = document.getElementById('previewModal');
+                document.getElementById('videoPreview').style.display = 'none'; document.getElementById('imagePreview').style.display = 'block';
+                document.getElementById('imagePreview').src = exportCanvas.toDataURL('image/png');
+                document.getElementById('modalInstruction').innerHTML = "📸 Static Image Generated!<br>Long-press or right-click the image to save it to your Photos.";
+                previewModal.style.display = 'flex';
+            } catch (e) {}
+        });
+
+        document.getElementById('btnCloseModal').addEventListener('click', () => { document.getElementById('previewModal').style.display = 'none'; document.getElementById('videoPreview').src = ''; });
+        window.addEventListener('resize', adjustSize);
+        window.addEventListener('DOMContentLoaded', () => { adjustSize(); initPieces(); updateTimelineUI(); });
+    </script>
+</body>
+</html>
